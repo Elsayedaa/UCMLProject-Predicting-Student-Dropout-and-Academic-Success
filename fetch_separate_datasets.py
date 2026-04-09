@@ -1,0 +1,126 @@
+import numpy as np
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from ucimlrepo import fetch_ucirepo 
+
+# fetch full dataset 
+predict_students_dropout_and_academic_success = fetch_ucirepo(id=697) 
+X = predict_students_dropout_and_academic_success.data.features 
+Y = predict_students_dropout_and_academic_success.data.targets 
+
+## Split variables based on type. Each variable type gets a different scaling treatment.
+
+# Nominal categorical and binary variables (Apply one-hot encoding)
+onehot_cols = [
+    'Marital Status',
+    'Application mode',
+    'Course',
+    'Nacionality',
+    "Mother's occupation",
+    "Father's occupation",
+    'Daytime/evening attendance',
+    'Displaced',
+    'Educational special needs',
+    'Debtor',
+    'Tuition fees up to date',
+    'Gender',
+    'Scholarship holder',
+    'International'
+]
+
+# Ordinal categorical and continuous variables (Apply Z-score normalization)
+scale_cols = [
+    'Previous qualification',
+    "Mother's qualification",
+    "Father's qualification",
+    'Application order',
+    'Age at enrollment',
+    'Previous qualification (grade)',
+    'Admission grade',
+    'Curricular units 1st sem (credited)',
+    'Curricular units 1st sem (enrolled)',
+    'Curricular units 1st sem (evaluations)',
+    'Curricular units 1st sem (approved)',
+    'Curricular units 1st sem (without evaluations)',
+    'Curricular units 2nd sem (credited)',
+    'Curricular units 2nd sem (enrolled)',
+    'Curricular units 2nd sem (evaluations)',
+    'Curricular units 2nd sem (approved)',
+    'Curricular units 2nd sem (without evaluations)',
+    'Curricular units 1st sem (grade)',
+    'Curricular units 2nd sem (grade)',
+    'Unemployment rate',
+    'Inflation rate',
+    'GDP'
+]
+
+# For the early detection model
+scale_cols_pre = [
+    'Previous qualification',
+    "Mother's qualification",
+    "Father's qualification",
+    'Application order',
+    'Age at enrollment',
+    'Previous qualification (grade)',
+    'Admission grade',
+    'Unemployment rate',
+    'Inflation rate',
+    'GDP'
+]
+
+# For the post enrollment detection model
+scale_cols_post = [
+    'Curricular units 1st sem (credited)',
+    'Curricular units 1st sem (enrolled)',
+    'Curricular units 1st sem (evaluations)',
+    'Curricular units 1st sem (approved)',
+    'Curricular units 1st sem (without evaluations)',
+    'Curricular units 2nd sem (credited)',
+    'Curricular units 2nd sem (enrolled)',
+    'Curricular units 2nd sem (evaluations)',
+    'Curricular units 2nd sem (approved)',
+    'Curricular units 2nd sem (without evaluations)',
+    'Curricular units 1st sem (grade)',
+    'Curricular units 2nd sem (grade)',
+]
+
+def fetch_anomalous_samples(X, onehot_cols, scale_cols):
+    # Initialize the column transformer
+    column_transformer = ColumnTransformer(transformers=[
+        ('onehot', OneHotEncoder(drop='if_binary', handle_unknown='ignore', sparse_output=False), onehot_cols),
+        ('scale', StandardScaler(), scale_cols)
+    ])
+
+    # Transform the data for the purpose of fetching the anomalous samples
+    recoded_data = column_transformer.fit_transform(X)
+    feature_names = column_transformer.get_feature_names_out()
+    X_transformed = pd.DataFrame(recoded_data, columns=feature_names)
+
+    # Fetch the anomalous samples
+    pca = PCA()
+    pca_transformed_x = pca.fit_transform(recoded_data)
+    anomalous_samples = np.where(pca_transformed_x[:,0]<-5)[0]
+
+    return anomalous_samples
+
+def fetch_pre_and_post_vars(X):
+    # Fetch the pre and post enrollment variables
+    post_enrollment_var = list(X.columns[-15:-3])
+    pre_enrollment_var = [x for x in list(X.columns) if x not in list(X.columns[-15:-3])]
+
+    return pre_enrollment_var, post_enrollment_var
+
+def fetch_data():
+    anomalous_samples = fetch_anomalous_samples(X, onehot_cols, scale_cols)
+    pre_enrollment_var, post_enrollment_var = fetch_pre_and_post_vars(X)
+
+    # Build the datasets
+    X_pre = X[pre_enrollment_var]
+    X_post = X[post_enrollment_var].iloc[~X.index.isin(anomalous_samples)]
+    X_combo = X[~X.index.isin(anomalous_samples)]
+
+    Y_exclude_anomalous = Y[~Y.index.isin(anomalous_samples)]
+
+    return X, X_pre, X_post, X_combo, Y, Y_exclude_anomalous, onehot_cols, scale_cols, scale_cols_pre, scale_cols_post
