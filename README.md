@@ -188,7 +188,7 @@ The most significant performance differences occur across models (A→B→C) rat
 - Precision: xgb(0.78) < pca(0.79) < pls(0.805)
 - Recall: pls(0.84) < xgb(0.85) < pca(0.86)
 
-**On the choice between PLS and PCA:** PLS is consistently at least as good as PCA for dropout detection and meaningfully better in Models A and B. In Model C the two are essentially equal on F1, with PLS favoring precision and PCA favoring recall. Critically, PLS typically achieves these results with far fewer dimensions than PCA (3 vs 40 for Model A and 13 vs 40 for Model C), yielding a meaningful reduction in computational complexity at very small cost to predictive accuracy.
+**On the choice between PLS and PCA:** PLS is consistently at least as good as PCA for dropout detection and marginally better in Models A and B. In Model C the two are essentially equal on F1, with PLS favoring precision and PCA favoring recall. Critically, PLS typically achieves these results with far fewer dimensions than PCA (3 vs 40 for Model A and 13 vs 40 for Model C), yielding a reduction in computational complexity at very small cost to predictive accuracy.
 
 ## 7. Extended Estimator Comparison
 
@@ -209,11 +209,11 @@ To understand which predictor variables drive target classification in each mode
     self.coef_ = np.dot(self.x_rotations_, self.y_loadings_.T)
     self.coef_ = (self.coef_ * self._y_std).T / self._x_std
     ```
-    The x_rotations are nearly identical to the x_weights, but correct for distortions across deflation steps in NIPALS algorithm used in PLSRegression.
+    The x_rotations are nearly identical to the x_weights, but correct for distortions across deflation steps in the NIPALS algorithm used in PLSRegression.
 
 4) The corresponding `y_loadings_` were extracted for each of the top 3 components, quantifying how strongly each component reconstructs each target class.
 
-All of these steps are handled within a Python script: `feature_attribution.py`, which handles `ModelConstructor` objects to extract the necessary variables for running the feature attribution analysis. 
+All of these steps are handled within a Python script: `feature_attribution.py`, which uses `ModelConstructor` objects to extract the necessary variables for running the feature attribution analysis. 
 
 Bar plots were produced showing feature loadings onto each of the top 3 components for each model, with inset plots showing the corresponding target class loadings (Coef) (Fig 10-12). Together, these visualizations reveal which original variables are most important for each component, and how each component relates to the prediction of each outcome class. IE: If a component loads positively onto a target class and a feature loads positively on the component, then the feature is positively associated with the class.
 
@@ -223,7 +223,7 @@ Model A: Early Detection
 
 The three most predictive PLS components in Model A encode distinct discriminative axes across the target classes. The first component separates dropouts from graduates, the second distinguishes graduates from the remaining classes, the third separates dropouts from enrolled students. Together they form a complementary set of decision boundaries across all three target classes (Fig. 10). 
 
-Financial indicators are the most consistent predictors across these components. Being up to date on tuition fees and holding a scholarship are positively associated with graduation and enrollment, and negatively associated with dropout. Higher pre-enrollment grades are also positively associated with graduation. Age at enrollment is also positively associated with dropout, consistent with the broader literature on non-traditional student risk.
+Financial indicators are the most consistent predictors across these components. Being up to date on tuition fees and holding a scholarship are positively associated with graduation and enrollment, and negatively associated with dropout. Higher pre-enrollment grades are also positively associated with graduation. Age at enrollment is also positively associated with dropout, consistent with the broader literature on non-traditional student risk [ref](https://www.researchgate.net/publication/332953886_Services_and_support_for_nontraditional_students_in_higher_education_A_historical_literature_review).
 
 Notably, two degree programs, Nursing and Social Service, are positively associated with graduation. Both involve professional service to others, suggesting that students driven by prosocial motivation may be more likely to complete their degrees.
 
@@ -232,14 +232,14 @@ Notably, two degree programs, Nursing and Social Service, are positively associa
 
 Model B: Post-Enrollment Detection
 
-The first component again separates dropouts from graduates via academic performance, with higher grades and approved credits strongly positively associated with graduation. The second PLS component is more nuanced: higher evaluation scores are negatively associated with graduates while higher credits approved/enrolled are positively associated with graduates, suggesting that students who enroll in many courses but underperform are likely to still succeed but may struggle to graduate. The third component reinforces this, showing that higher credited and enrolled units are positively associated with dropout, suggesting that overenrollment is a dropout risk factor independent of grade performance (Fig. 11).
+The first component again separates dropouts from graduates via academic performance, with higher grades and approved credits strongly positively associated with graduation. The second PLS component is more nuanced: higher evaluation scores are negatively associated with graduates while higher credits approved/enrolled are positively associated with graduates, suggesting that students who enroll in many courses but underperform are likely to still succeed but may struggle to graduate. The third component reinforces this, showing that higher credited and enrolled units are positively associated with dropout, suggesting that overenrollment is a dropout risk factor independent of grade performance (Fig. 11). 
 
 ![11](figures/feature_attribution_model_B.png)
 *Fig 11* (Made in [notebook #5](5_feature_attribution.ipynb))
 
 Model C — Combined Detection
 
-The combined model's first component reflects the findings of Models A and B: a combination of financial and academic indicators jointly discriminates graduates from dropouts. The second component is dominated by semester evaluation counts and enrollment in Informatics Engineering, positively associated with graduation, while scholarship holder status is negatively associated with enrollment, consistent with scholarship holders being a minority population. The third component reveals that being single and being displaced are positively associated with dropout, alongside weak financial and academic indicators. This suggests that social stressors (IE: housing instability and lack of personal support networks) may contribute independently to dropout risk beyond academic and financial factors (Fig. 12).
+The combined model's first component reflects the findings of Models A and B: a combination of financial and academic indicators jointly discriminates graduates from dropouts. The second component is mainly dominated by semester evaluation counts. This component also shows a moderate positive association between enrollment in Informatics Engineering and graduation and a moderate negative association between scholarship holder status and enrollment, consistent with scholarship holders being a minority population. The third component reveals that weak financial indicators are positively associated with dropout alongside being single and being displaced. This suggests that social stressors (IE: financial instability, housing instability, and lack of personal support networks) may contribute independently to dropout risk beyond academic and financial factors (Fig. 12).
 
 ![12](figures/feature_attribution_model_C.png)
 *Fig 12* (Made in [notebook #5](5_feature_attribution.ipynb))
