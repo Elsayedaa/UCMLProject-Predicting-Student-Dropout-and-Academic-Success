@@ -5,10 +5,32 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from ucimlrepo import fetch_ucirepo 
 
-# fetch full dataset 
-predict_students_dropout_and_academic_success = fetch_ucirepo(id=697) 
-X = predict_students_dropout_and_academic_success.data.features 
-Y = predict_students_dropout_and_academic_success.data.targets 
+## fetch dataset 
+try: 
+    predict_students_dropout_and_academic_success = fetch_ucirepo(id=31) 
+    # # data (as pandas dataframes) 
+    X = predict_students_dropout_and_academic_success.data.features 
+    Y = predict_students_dropout_and_academic_success.data.targets 
+
+except ConnectionError:
+
+    ## In case of down connection to ucimlrepo 
+    data = pd.read_csv('data.csv')
+    col = ['Marital Status'] + list(data.columns[0].split(';'))[1:]
+    col[4] = col[4].replace('\t', '').replace('"', '')
+    d = [str(row[0]).split(';') for row in data.values]
+    data = pd.DataFrame(np.array(d[1:]), columns=col)
+    X = data[list(data.columns)[:-1]]
+    Y = pd.DataFrame(data[list(data.columns)[-1]])
+    dfvar = pd.read_csv('variable_descriptions.csv')
+    typed_data = []
+    for c in col[:-1]:
+        if dfvar.loc[dfvar.name == c].type.values[0] == 'Integer':
+            typed_data.append([int(float(x)) for x in X[c]])
+        elif dfvar.loc[dfvar.name == c].type.values[0] == 'Continuous':
+            typed_data.append(X[c].astype(float))
+
+    X = pd.DataFrame(np.array(typed_data).T, columns=col[:-1])
 
 ## Split variables based on type. Each variable type gets a different scaling treatment.
 
